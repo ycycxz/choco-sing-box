@@ -1,0 +1,122 @@
+name: Update-Pre
+on:
+  schedule:
+    - cron: "4 23 * * 0"
+  push:
+    branches:
+      - pre
+
+jobs:
+  Update:
+    name: Update
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@main
+      - name: Delete workflow runs
+        uses: Mattraks/delete-workflow-runs@main
+        with:
+          token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          retain_days: 0
+          keep_minimum_runs: 0
+
+      - name: Update
+        run: |
+          rm -fr * .git .github
+          
+          sing_box_version=$(curl -sL -H 'Accept: application/json' 'https://api.github.com/repos/sagernet/sing-box/releases?per_page=10&page=1'  | jq -r '.[] | select(.prerelease == true) | .name' | head -1 )
+          #sing_box_version=${sing_box_version:1}
+          wget -qO ./sing-box.zip  https://github.com/SagerNet/sing-box/releases/download/v${sing_box_version}/sing-box-${sing_box_version}-windows-amd64.zip
+          check_sha256=$(sha256sum ./sing-box.zip | cut -d " " -f1 )
+          echo sing-box $check_sha256
+          echo ====================
+          rm -f ./sing-box.zip
+
+          mkdir -p ./sing-box/tools
+
+          #chocolateyinstall.ps1
+
+          cat <<EOF > ./sing-box/tools/chocolateyinstall.ps1
+          \$ErrorActionPreference = 'Stop'
+          \$toolsDir = "\$(Split-Path -parent \$MyInvocation.MyCommand.Definition)"
+
+          if (Test-Connection -ComputerName google.com -Quiet -Count 1) {
+            \$url64 = "https://github.com/SagerNet/sing-box/releases/download/v${sing_box_version}/sing-box-${sing_box_version}-windows-amd64.zip"
+          }
+          else {
+            \$url64 = "https://download.fgit.cf/SagerNet/sing-box/releases/download/v${sing_box_version}/sing-box-${sing_box_version}-windows-amd64.zip"
+          }
+
+          \$checksum64 = "$check_sha256"
+
+          Install-ChocolateyZipPackage \$packageName \$url64 -checksum64 \$checksum64 -UnzipLocation \$toolsDir
+          EOF
+
+          cat ./sing-box/tools/chocolateyinstall.ps1
+
+          #chocolateybeforemodify.ps1
+          cat <<EOF > ./sing-box/tools/chocolateybeforemodify.ps1
+          \$ErrorActionPreference = 'Stop'
+
+          Get-Process -Name 'sing-box' -ErrorAction SilentlyContinue | Stop-Process
+          EOF
+
+          cat ./sing-box/tools/chocolateybeforemodify.ps1
+
+          #sing-box.nuspec
+          cat <<EOF > ./sing-box/sing-box.nuspec
+          <?xml version="1.0" encoding="utf-8"?>
+          <package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+            <metadata>
+              <id>sing-box</id>
+              <version>${sing_box_version}</version>
+              <owners>Mainians</owners>
+              <title>sing-box</title>
+              <authors>nekohasekai</authors>
+              <projectUrl>https://github.com/SagerNet/sing-box</projectUrl>
+              <iconUrl>https://cdn.jsdelivr.net/gh/SagerNet/sing-box@dev-next/docs/assets/icon.svg</iconUrl>
+              <copyright>Copyright (C) 2022 by nekohasekai</copyright>
+              <licenseUrl>https://github.com/SagerNet/sing-box#license</licenseUrl>
+              <requireLicenseAcceptance>false</requireLicenseAcceptance>
+              <projectSourceUrl>https://github.com/SagerNet/sing-box</projectSourceUrl>
+              <docsUrl>https://sing-box.sagernet.org/</docsUrl>
+              <mailingListUrl>https://sing-box.sagernet.org/support/</mailingListUrl>
+              <bugTrackerUrl>https://github.com/SagerNet/sing-box/issues</bugTrackerUrl>
+              <tags>sing-box v2ray clash xray</tags>
+              <summary>The universal proxy platform</summary>
+              <description>The universal proxy platform,which uses JSON for configuration files.</description>
+              <releaseNotes>https://sing-box.sagernet.org/changelog/</releaseNotes>
+              <packageSourceUrl>https://github.com/mainians/Choco-sing-box</packageSourceUrl>
+            </metadata>
+            <files>
+              <file src="tools\**" target="tools" />
+            </files>
+          </package>
+          EOF
+
+          cat ./sing-box/sing-box.nuspec
+
+          mkdir -p .github/workflows
+          wget -qO .github/workflows/update.yaml https://github.com/${{ github.repository }}/raw/pre/.github/workflows/update.yaml
+
+          git config --global init.defaultBranch pre
+          git init
+          git add .
+          git config user.name "mainians"
+          git config user.email "61817665+mainians@users.noreply.github.com"
+          git commit -m "${sing_box_version}"
+          git remote add release "https://${{github.actor}}:${{secrets.GITHUB_TOKEN}}@github.com/${{github.repository}}"
+          git push -u release pre -f
+  Cpack:
+    name: Cpack
+    needs: Update
+    runs-on: windows-latest
+    steps:
+      - name: Cpack
+        run: |
+          git clone -b pre https://github.com/${{github.repository}} sing-box
+          cd sing-box/sing-box
+          choco apikey --key ${{secrets.api_key}} --source https://push.chocolatey.org/
+          choco pack
+          choco push --source https://push.chocolatey.org/ || true
