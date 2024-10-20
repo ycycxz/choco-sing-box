@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>sing-box</id>
+    <version>1.10.1</version>
+    <owners>Mainians</owners>
+    <title>sing-box</title>
+    <authors>nekohasekai</authors>
+    <projectUrl>https://github.com/SagerNet/sing-box</projectUrl>
+    <iconUrl>https://cdn.jsdelivr.net/gh/SagerNet/sing-box@dev-next/docs/assets/icon.svg</iconUrl>
+    <copyright>Copyright (C) 2022 by nekohasekai</copyright>
+    <licenseUrl>https://github.com/SagerNet/sing-box#license</licenseUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <projectSourceUrl>https://github.com/SagerNet/sing-box</projectSourceUrl>
+    <docsUrl>https://sing-box.sagernet.org/</docsUrl>
+    <mailingListUrl>https://sing-box.sagernet.org/support/</mailingListUrl>
+    <bugTrackerUrl>https://github.com/SagerNet/sing-box/issues</bugTrackerUrl>
+    <tags>sing-box v2ray clash xray</tags>
+    <summary>The universal proxy platform</summary>
+    <description>The universal proxy platform,which uses JSON for configuration files.</description>
+    <releaseNotes>https://sing-box.sagernet.org/changelog/</releaseNotes>
+    <packageSourceUrl>https://github.com/mainians/Choco-sing-box</packageSourceUrl>
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>
